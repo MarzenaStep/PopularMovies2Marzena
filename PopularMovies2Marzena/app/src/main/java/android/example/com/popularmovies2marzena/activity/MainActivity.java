@@ -160,6 +160,7 @@ public class MainActivity  extends AppCompatActivity implements SharedPreference
         public void onLoadFinished(Loader<Cursor> loader, Cursor cursor) {
             // Update {@link MovieAdapter} with this new cursor containing updated favourites movies data
             movieAdapter.swapCursor(cursor);
+            movieAdapter.clearMovieList();
 
             cursor = getApplicationContext().getContentResolver().query(MovieEntry.CONTENT_URI,
                     FAVOURITES_MOVIES_PROJECTION, null, null, null);
@@ -197,6 +198,7 @@ public class MainActivity  extends AppCompatActivity implements SharedPreference
 
                     movie = new Movie(title, originalTitle, releaseDate, posterUrl, backdrop, voteAverage, overview, movieId);
                     moviesList.add(movie);
+                    movieAdapter.updateMoveList(moviesList);
 
                 }
             }
@@ -209,6 +211,7 @@ public class MainActivity  extends AppCompatActivity implements SharedPreference
         public void onLoaderReset(Loader<Cursor> loader) {
             // Callback called when the data needs to be deleted
             movieAdapter.swapCursor(null);
+            movieAdapter.clearMovieList();
         }
     }
 

@@ -18,7 +18,7 @@
     <!--Main Activity messages-->
     <string name="no_internet_connection">No internet connection</string>
     <string name="no_movies">No movies found</string>
-    <string name="no_favourites">It\'s empty here, please add some movies to favourites</string>
+    <string name="no_key">Please, insert your API key to see movies</string>
 
     <!-- Details Activity-->
     <string name="details_error_message">Movie data not available</string>

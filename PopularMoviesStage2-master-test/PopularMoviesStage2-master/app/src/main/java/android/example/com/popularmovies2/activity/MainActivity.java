@@ -195,8 +195,7 @@ public class MainActivity  extends AppCompatActivity implements SharedPreference
                         double voteAverage = cursor.getDouble(voteAverageColumnIndex);
                         Log.v("Cursor", movieId + "-" + backdrop + "-" + originalTitle  + "-" + overview + "-" + posterUrl + "-" + releaseDate + "-" + title + "-" + voteAverage);
 
-                        movie = new Movie(title, originalTitle, releaseDate, posterUrl, backdrop, voteAverage, overview, movieId);
-                        moviesList.add(movie);
+
 
                     }
                 }

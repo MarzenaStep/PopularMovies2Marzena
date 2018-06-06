@@ -19,7 +19,6 @@ import android.example.com.popularmovies2marzena.loader.MovieLoader;
 import android.example.com.popularmovies2marzena.object.Movie;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
-import android.net.Uri;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.v7.app.AppCompatActivity;
@@ -29,6 +28,7 @@ import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.Toast;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -61,6 +61,8 @@ public class MainActivity  extends AppCompatActivity implements SharedPreference
     private ActivityMainBinding mainBinding;
     private ArrayList<Movie> moviesList;
     private static boolean PREFERENCES_HAVE_BEEN_UPDATED = false;
+    private String preference;
+    private LoaderManager loaderManager;
 
 
 
@@ -91,20 +93,20 @@ public class MainActivity  extends AppCompatActivity implements SharedPreference
 
             mainBinding.ivNoMovies.setVisibility(View.INVISIBLE);
 
-            SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-            String keyForSortOrder = getApplicationContext().getString(R.string.preferences_sort_order_key);
-            String defaultSortOrder = getApplicationContext().getString(R.string.preferences_sort_order_by_default);
-            String preferredSortOrder = sharedPref.getString(keyForSortOrder, defaultSortOrder);
+            preference = PreferenceManager.getDefaultSharedPreferences(getApplicationContext())
+                    .getString(getString(R.string.preferences_sort_order_key), getString(R.string.preferences_sort_order_by_default));
             String popular = getApplicationContext().getString(R.string.preferences_sort_order_by_default);
 
 
-            if (popular.equals(preferredSortOrder)) {
+            if (popular.equals(preference)) {
+                Log.v(LOG_TAG,"SORT ORDER = " + preference);
                 layoutManager.scrollToPosition(0);
                 setTitle(getString(R.string.preferences_most_popular_label));
                 return new MovieLoader(getApplicationContext(), POPULAR_URL);
             }
 
             else {
+                Log.v(LOG_TAG,"SORT ORDER = " + preference);
                 layoutManager.scrollToPosition(0);
                 setTitle(getString(R.string.preferences_top_rated_label));
                 return new MovieLoader(getApplicationContext(), TOP_RATED_URL);
@@ -151,8 +153,6 @@ public class MainActivity  extends AppCompatActivity implements SharedPreference
         @Override
         public Loader<Cursor> onCreateLoader(int loaderId, Bundle bundle) {
 
-
-
             return new CursorLoader(getApplicationContext(),    // Parent activity context
                     MovieEntry.CONTENT_URI,                     // Provider content URI to query
                     FAVOURITES_MOVIES_PROJECTION,               // Columns to include in the resulting Cursor
@@ -164,17 +164,6 @@ public class MainActivity  extends AppCompatActivity implements SharedPreference
 
         @Override
         public void onLoadFinished(Loader<Cursor> loader, Cursor cursor) {
-            // Update {@link MovieAdapter} with this new cursor containing updated favourites movies data
-
-            MovieAdapter.PosterAdapterOnClickHandler clickHandler = new MovieAdapter.PosterAdapterOnClickHandler() {
-                @Override
-                public void onClick(Movie movie) {
-                    //Launch DetailsActivity when movie poster is clicked
-                    Intent startDetailActivityIntent = new Intent(MainActivity.this, DetailActivity.class);
-                    startDetailActivityIntent.putExtra(DetailActivity.SELECTED_MOVIE_INFORMATION, movie);
-                    startActivity(startDetailActivityIntent);
-                }
-            };
 
             cursor = getApplicationContext().getContentResolver().query(MovieEntry.CONTENT_URI,
                     FAVOURITES_MOVIES_PROJECTION, null, null, null);
@@ -214,9 +203,16 @@ public class MainActivity  extends AppCompatActivity implements SharedPreference
 
 
                 }
-                favouritesAdapter = new FavouritesAdapter(getApplicationContext(), cursor, clickHandler);
-                favouritesAdapter.swapCursor(cursor);
+                favouritesAdapter = new FavouritesAdapter(getApplicationContext(), cursor, new MovieAdapter.PosterAdapterOnClickHandler() {
+                    @Override
+                    public void onClick(Movie movie) {
+                        Intent startDetailActivityIntent = new Intent(MainActivity.this, DetailActivity.class);
+                        startDetailActivityIntent.putExtra(DetailActivity.SELECTED_MOVIE_INFORMATION, movie);
+                        startActivity(startDetailActivityIntent);
+                    }
+                });
                 mainBinding.rvPoster.setAdapter(favouritesAdapter);
+                favouritesAdapter.swapCursor(cursor);
             }
         }
 
@@ -239,6 +235,11 @@ public class MainActivity  extends AppCompatActivity implements SharedPreference
         super.onCreate(savedInstanceState);
         mainBinding = DataBindingUtil.setContentView(this, R.layout.activity_main);
 
+
+        if (API_KEY.isEmpty()) {
+            Toast.makeText(this, R.string.no_key, Toast.LENGTH_LONG).show();
+        }
+
             /*
          * If savedInstanceState is not null, that means our Activity is not being started for the
          * first time. Even if the savedInstanceState is not null, it is smart to check if the
@@ -246,11 +247,12 @@ public class MainActivity  extends AppCompatActivity implements SharedPreference
          * to the contents of the posterAdapter that displays list of movies. If the bundle
          * contains that key, we set the contents of the poster list accordingly.
          */
-        //If the savedInstanceState bundle is not null, update trailer list
+        //If the savedInstanceState bundle is not null, update movies list
         if (savedInstanceState != null) {
             if (savedInstanceState.containsKey(MOVIES_KEY)) {
                 moviesList = savedInstanceState.getParcelableArrayList(MOVIES_KEY);
             }
+
         }
 
         //https://discussions.udacity.com/t/autofit-grid-recycler-view/188314
@@ -282,12 +284,17 @@ public class MainActivity  extends AppCompatActivity implements SharedPreference
         if (networkInfo != null && networkInfo.isConnected()) {
 
             // Get a reference to the LoaderManager, in order to interact with loaders
-            LoaderManager loaderManager = getLoaderManager();
+            loaderManager = getLoaderManager();
 
             Log.i(LOG_TAG, "TEST: calling initLoader() ...");
 
             // Initialize the loader
-            loaderManager.initLoader(INTERNET_MOVIE_LOADER_ID, null, new MovieCallback());
+            if (loaderManager.getLoader(1) == null) {
+                loaderManager.initLoader(INTERNET_MOVIE_LOADER_ID, null, new MovieCallback());
+            }
+            else if (loaderManager.getLoader(2) == null) {
+                loaderManager.initLoader(DATABASE_FAVOURITE_LOADER_ID, null, new FavouritesCallback());
+            }
 
         } else {
             // Hide loading indicator and display error message - no internet connection
@@ -331,16 +338,20 @@ public class MainActivity  extends AppCompatActivity implements SharedPreference
     protected void onStart() {
         super.onStart();
 
+
         if (PREFERENCES_HAVE_BEEN_UPDATED) {
             getLoaderManager().restartLoader(INTERNET_MOVIE_LOADER_ID, null, new MovieCallback());
+            getLoaderManager().destroyLoader(DATABASE_FAVOURITE_LOADER_ID);
             PREFERENCES_HAVE_BEEN_UPDATED = false;
         }
-    }
+        }
+
     @Override
     protected void onResume() {
-
         super.onResume();
+
     }
+
 
     @Override
     protected void onDestroy() {
@@ -351,21 +362,23 @@ public class MainActivity  extends AppCompatActivity implements SharedPreference
     @Override
     public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
 
-            String preference = PreferenceManager.getDefaultSharedPreferences(getApplicationContext())
-                    .getString(getString(R.string.preferences_sort_order_key), getString(R.string.preferences_sort_order_by_default));
-            String favourite = getApplicationContext().getString(R.string.preferences_favourites_value);
+        String preference = PreferenceManager.getDefaultSharedPreferences(getApplicationContext())
+                .getString(getString(R.string.preferences_sort_order_key), getString(R.string.preferences_sort_order_by_default));
+        String favourite = getApplicationContext().getString(R.string.preferences_favourites_value);
 
-            if (preference.equals(favourite)) {
-                //if loader already exist, appropriately use restartLoader instead
-                setTitle(getString(R.string.preferences_favourites_label));
-                getLoaderManager().initLoader(DATABASE_FAVOURITE_LOADER_ID, null, new FavouritesCallback());
-            }else{
-                //existing implementation for "Popular" and "top rated"
-                //as mentioned, you need to explicitly define the callback, so do that as well.
-                getLoaderManager().restartLoader(INTERNET_MOVIE_LOADER_ID, null, new MovieCallback());
-            }
+        if (preference.equals(favourite)) {
+            setTitle(getString(R.string.preferences_favourites_label));
+            getLoaderManager().restartLoader(DATABASE_FAVOURITE_LOADER_ID, null, new FavouritesCallback());
+            getLoaderManager().destroyLoader(INTERNET_MOVIE_LOADER_ID);
+        }else{
+            getLoaderManager().restartLoader(INTERNET_MOVIE_LOADER_ID, null, new MovieCallback());
+            getLoaderManager().destroyLoader(DATABASE_FAVOURITE_LOADER_ID);
+        }
 
         }
+
+
+
 
 
     //This method is for responding to clicks from movie list

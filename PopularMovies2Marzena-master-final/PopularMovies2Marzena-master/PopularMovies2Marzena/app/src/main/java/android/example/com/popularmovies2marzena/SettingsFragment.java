@@ -60,8 +60,8 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
         getPreferenceScreen().getSharedPreferences()
                 .registerOnSharedPreferenceChangeListener(this);
 
-
     }
+
 
     @Override
     public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {

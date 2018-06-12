@@ -4,6 +4,7 @@ import android.content.Context;
 import android.database.Cursor;
 import android.example.com.popularmovies2marzena.R;
 import android.example.com.popularmovies2marzena.object.Movie;
+import android.support.annotation.NonNull;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -61,8 +62,9 @@ public class MovieAdapter extends RecyclerView.Adapter<MovieAdapter.PosterAdapte
     }
 
     // Inflating a layout from XML and returning new holder
+    @NonNull
     @Override
-    public PosterAdapterViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+    public PosterAdapterViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View rootView = LayoutInflater.from(parent.getContext()).inflate(R.layout.poster_list_item, parent, false);
         rootView.setFocusable(true);
         return new PosterAdapterViewHolder(rootView);
@@ -70,7 +72,7 @@ public class MovieAdapter extends RecyclerView.Adapter<MovieAdapter.PosterAdapte
 
     // Populating data into the item through holder
     @Override
-    public void onBindViewHolder(PosterAdapterViewHolder holder, int position) {
+    public void onBindViewHolder(@NonNull PosterAdapterViewHolder holder, int position) {
 
         //Get data model based on position
         Movie currentMovie = mPosterList.get(position);
@@ -78,7 +80,7 @@ public class MovieAdapter extends RecyclerView.Adapter<MovieAdapter.PosterAdapte
         String posterUrl;
         if (currentMovie != null) {
             posterUrl = currentMovie.getPosterUrl();
-            Picasso.with(mContext).load(posterUrl).placeholder(R.drawable.ic_launcher_background).into(holder.posterIv);
+            Picasso.with(mContext).load(posterUrl).placeholder(R.drawable.ic_launcher_background).error(R.drawable.poster_error).into(holder.posterIv);
         }
     }
 

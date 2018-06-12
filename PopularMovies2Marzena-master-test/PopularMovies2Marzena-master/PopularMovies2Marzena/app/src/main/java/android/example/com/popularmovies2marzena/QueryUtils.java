@@ -31,7 +31,6 @@ public class QueryUtils {
 
 
     //Returns new URL object from the given string URL
-
     private static URL createUrl(String stringUrl) {
         URL url = null;
         try {
@@ -102,7 +101,7 @@ public class QueryUtils {
      * Return a list of {@link Movie} objects that has been built up from
      * parsing a JSON response.
      */
-    public static List<Movie> extractFeaturesFromJson(String movieJson) {
+    public static List<Movie> extractMovieFeaturesFromJson(String movieJson) {
 
         // If the JSON string is empty or null, then return early.
         if (TextUtils.isEmpty(movieJson)) {
@@ -268,7 +267,7 @@ public class QueryUtils {
         }
 
         // Extract relevant fields from the JSON response and create a list of {@link Movie}s
-        List<Movie> movies = extractFeaturesFromJson(jsonResponse);
+        List<Movie> movies = extractMovieFeaturesFromJson(jsonResponse);
 
         // Return the list of {@link Movie}s
         return movies;

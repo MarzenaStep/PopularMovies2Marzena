@@ -10,10 +10,9 @@ import android.content.res.Resources;
 import android.database.Cursor;
 import android.databinding.DataBindingUtil;
 import android.example.com.popularmovies2marzena.BuildConfig;
-import android.example.com.popularmovies2marzena.adapter.MovieAdapter;
 import android.example.com.popularmovies2marzena.R;
+import android.example.com.popularmovies2marzena.adapter.MovieAdapter;
 import android.example.com.popularmovies2marzena.data.MovieContract.MovieEntry;
-
 import android.example.com.popularmovies2marzena.databinding.ActivityMainBinding;
 import android.example.com.popularmovies2marzena.loader.MovieLoader;
 import android.example.com.popularmovies2marzena.object.Movie;
@@ -23,11 +22,13 @@ import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.GridLayoutManager;
+import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.Toast;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -51,14 +52,15 @@ public class MainActivity  extends AppCompatActivity implements SharedPreference
     // Constant value for the movie loader ID. It can be any integer.
     public static final int INTERNET_MOVIE_LOADER_ID = 1;
 
-    //Constant value for the favourites loader ID
+    //Constant value for the favourites movies loader ID
     public static final int DATABASE_FAVOURITE_LOADER_ID = 2;
 
+    //Adapter for the RecycleView
     private MovieAdapter movieAdapter;
     private GridLayoutManager layoutManager;
     private ActivityMainBinding mainBinding;
     private ArrayList<Movie> moviesList = new ArrayList<>();
-    private static boolean PREFERENCES_HAVE_BEEN_UPDATED = false;
+    private int mPosition = RecyclerView.NO_POSITION;
 
 
 
@@ -157,9 +159,18 @@ public class MainActivity  extends AppCompatActivity implements SharedPreference
 
         @Override
         public void onLoadFinished(Loader<Cursor> loader, Cursor cursor) {
+
+            // Hide loading indicator and errorMessageTv because the data has been loaded
+            mainBinding.pbLoadingIndicator.setVisibility(View.GONE);
+            mainBinding.tvErrorMessage.setVisibility(View.INVISIBLE);
+            mainBinding.ivNoMovies.setVisibility(View.INVISIBLE);
+
             // Update {@link MovieAdapter} with this new cursor containing updated favourites movies data
             movieAdapter.clearMovieList();
             movieAdapter.swapCursor(cursor);
+
+            if (mPosition == RecyclerView.NO_POSITION) mPosition = 0;
+            mainBinding.rvPoster.smoothScrollToPosition(mPosition);
 
 
             List<Movie> favouritesList = new ArrayList<>();
@@ -169,7 +180,6 @@ public class MainActivity  extends AppCompatActivity implements SharedPreference
 
             // Find the columns of movies attributes that we're interested in
             assert cursor != null;
-            int idColumnIndex = cursor.getColumnIndex(MovieEntry._ID);
             int movieIdColumnIndex = cursor.getColumnIndex(MovieEntry.COLUMN_MOVIE_ID);
             int backdropColumnIndex = cursor.getColumnIndex(MovieEntry.COLUMN_MOVIE_BACKDROP_URL);
             int originalTitleColumnIndex = cursor.getColumnIndex(MovieEntry.COLUMN_MOVIE_ORIGINAL_TITLE);
@@ -179,11 +189,12 @@ public class MainActivity  extends AppCompatActivity implements SharedPreference
             int titleColumnIndex = cursor.getColumnIndex(MovieEntry.COLUMN_MOVIE_TITLE);
             int voteAverageColumnIndex = cursor.getColumnIndex(MovieEntry.COLUMN_MOVIE_VOTE_AVERAGE);
 
-
-            if (cursor != null || cursor.getCount() > 0) {
+            if (cursor == null || cursor.getCount() < 1) {
+                return;
+            }
+            else {
                 while (cursor.moveToNext()) {
                     // Extract out the value from the Cursor for the given column index
-                    int id = cursor.getInt(idColumnIndex);
                     int movieId = cursor.getInt(movieIdColumnIndex);
                     String backdrop = cursor.getString(backdropColumnIndex);
                     String originalTitle = cursor.getString(originalTitleColumnIndex);
@@ -274,13 +285,26 @@ public class MainActivity  extends AppCompatActivity implements SharedPreference
             }
 
         } else {
-            // Hide loading indicator and display error message - no internet connection
-            mainBinding.pbLoadingIndicator.setVisibility(View.GONE);
-            mainBinding.tvErrorMessage.setText(R.string.no_internet_connection);
+
+            Toast.makeText(this, R.string.no_internet_connection, Toast.LENGTH_LONG).show();
 
         }
 
+        String preference = PreferenceManager.getDefaultSharedPreferences(getApplicationContext())
+                .getString(getString(R.string.preferences_sort_order_key), getString(R.string.preferences_sort_order_by_default));
+        String popular = getApplicationContext().getString(R.string.preferences_sort_order_by_default);
+        String top = getApplicationContext().getString(R.string.preferences_top_rated_value);
 
+        if (preference.equals(popular) || preference.equals(top)) {
+
+            getLoaderManager().restartLoader(INTERNET_MOVIE_LOADER_ID, null, new MovieCallback());
+            getLoaderManager().destroyLoader(DATABASE_FAVOURITE_LOADER_ID);
+
+        }else {
+            setTitle(getString(R.string.preferences_favourites_label));
+            getLoaderManager().restartLoader(DATABASE_FAVOURITE_LOADER_ID, null, new FavouritesCallback());
+            getLoaderManager().destroyLoader(INTERNET_MOVIE_LOADER_ID);
+        }
         PreferenceManager.getDefaultSharedPreferences(this).registerOnSharedPreferenceChangeListener(this);
 
     }
@@ -305,22 +329,6 @@ public class MainActivity  extends AppCompatActivity implements SharedPreference
             return true;
         }
         return super.onOptionsItemSelected(item);
-    }
-
-    @Override
-    protected void onStart() {
-        super.onStart();
-
-        if (PREFERENCES_HAVE_BEEN_UPDATED) {
-            getLoaderManager().restartLoader(INTERNET_MOVIE_LOADER_ID, null, new MovieCallback());
-            getLoaderManager().destroyLoader(DATABASE_FAVOURITE_LOADER_ID);
-            PREFERENCES_HAVE_BEEN_UPDATED = false;
-        }
-
-    }
-    @Override
-    protected void onResume() {
-        super.onResume();
     }
 
     @Override
@@ -360,6 +368,8 @@ public class MainActivity  extends AppCompatActivity implements SharedPreference
         savedInstanceState.putParcelableArrayList(MOVIES_KEY, moviesList);
         super.onSaveInstanceState(savedInstanceState);
     }
+
+
 }
 
 

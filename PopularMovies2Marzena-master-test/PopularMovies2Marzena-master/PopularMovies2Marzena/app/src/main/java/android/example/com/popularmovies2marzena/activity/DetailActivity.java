@@ -13,7 +13,6 @@ import android.example.com.popularmovies2marzena.R;
 import android.example.com.popularmovies2marzena.adapter.ReviewAdapter;
 import android.example.com.popularmovies2marzena.adapter.TrailerAdapter;
 import android.example.com.popularmovies2marzena.data.MovieContract.MovieEntry;
-import android.example.com.popularmovies2marzena.data.MovieDbHelper;
 import android.example.com.popularmovies2marzena.databinding.ActivityDetailBinding;
 import android.example.com.popularmovies2marzena.loader.ReviewLoader;
 import android.example.com.popularmovies2marzena.loader.TrailerLoader;
@@ -52,11 +51,8 @@ public class DetailActivity extends AppCompatActivity implements TrailerAdapter.
     // This constant String will be used to store trailers list
     private static final String TRAILERS_KEY = "trailers";
 
-    //This constant String will be used tp store reviews list
+    //This constant String will be used to store reviews list
     private static final String REVIEWS_KEY = "reviews";
-
-    //This constant String will be used to store favourite Toggle Button state
-    private static final String FAVOURITE_KEY = "favourites";
 
     private Movie selectedMovie;
     //Declare an ActivityDetailBinding field called detailBinding
@@ -66,17 +62,10 @@ public class DetailActivity extends AppCompatActivity implements TrailerAdapter.
     // Constant value for the review loader ID
     private static final int REVIEW_LOADER_ID = 3;
 
-    //Database helper that will provide us access to the database
-    private MovieDbHelper movieDbHelper;
-
     private TrailerAdapter trailerAdapter;
     private ReviewAdapter reviewAdapter;
-    private LinearLayoutManager trailersLayoutManager;
-    private LinearLayoutManager reviewsLayoutManager;
     private String movieIdAsString;
     private static final String API_KEY = BuildConfig.MY_MOVIE_DB_API_KEY;
-    private String trailerUrl;
-    private String reviewUrl;
     private ArrayList<Trailer> trailersList;
     private ArrayList<Review> reviewsList;
 
@@ -90,7 +79,7 @@ public class DetailActivity extends AppCompatActivity implements TrailerAdapter.
             Log.i(LOG_TAG, "TEST: onCreateLoader() called ...");
             movieIdAsString = String.valueOf(selectedMovie.getId());
             Log.e(LOG_TAG, "This is the movie id");
-            reviewUrl = BASE_MOVIE_DB + movieIdAsString + "/reviews?api_key=" + API_KEY;
+            String reviewUrl = BASE_MOVIE_DB + movieIdAsString + "/reviews?api_key=" + API_KEY;
             Log.e(LOG_TAG, "This is review final URL");
             return new ReviewLoader(getApplicationContext(), reviewUrl);
         }
@@ -120,7 +109,7 @@ public class DetailActivity extends AppCompatActivity implements TrailerAdapter.
             Log.i(LOG_TAG, "TEST: onCreateLoader() called ...");
             movieIdAsString = String.valueOf(selectedMovie.getId());
             Log.e(LOG_TAG, "This is the movie id");
-            trailerUrl = BASE_MOVIE_DB + movieIdAsString + "/videos?api_key=" + API_KEY;
+            String trailerUrl = BASE_MOVIE_DB + movieIdAsString + "/videos?api_key=" + API_KEY;
             Log.e(LOG_TAG, "This is movie final URL");
             return new TrailerLoader(getApplicationContext(), trailerUrl);
         }
@@ -135,6 +124,7 @@ public class DetailActivity extends AppCompatActivity implements TrailerAdapter.
                 int numberOfTrailers = trailers.size();
                 String amountOfTrailers = getResources().getQuantityString(R.plurals.videos, numberOfTrailers, numberOfTrailers);
                 detailBinding.tvVideosNumber.setText(amountOfTrailers);
+
             }
             else detailBinding.tvVideosNumber.setText(getString(R.string.details_no_trailers));
         }
@@ -151,11 +141,6 @@ public class DetailActivity extends AppCompatActivity implements TrailerAdapter.
         //Instantiate mDetailBinding using DataBindingUtil
         detailBinding = DataBindingUtil.setContentView(this, R.layout.activity_detail);
 
-
-        // To access our database, we instantiate our subclass of SQLiteOpenHelper
-        // and pass the context, which is the current activity.
-        movieDbHelper = new MovieDbHelper(this);
-
         /*
          * If savedInstanceState is not null, that means Activity is not being started for the
          * first time. Even if the savedInstanceState is not null, it is smart to check if the
@@ -169,9 +154,6 @@ public class DetailActivity extends AppCompatActivity implements TrailerAdapter.
                 trailersList = savedInstanceState.getParcelableArrayList(TRAILERS_KEY);
             } else if (savedInstanceState.containsKey(REVIEWS_KEY)) {
                 reviewsList = savedInstanceState.getParcelableArrayList(REVIEWS_KEY);
-            } else if (savedInstanceState.containsKey(FAVOURITE_KEY)) {
-
-
             }
         }
 
@@ -182,15 +164,14 @@ public class DetailActivity extends AppCompatActivity implements TrailerAdapter.
             closeOnError();
         }
 
-        trailersLayoutManager = new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false);
-        reviewsLayoutManager = new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false);
+        LinearLayoutManager trailersLayoutManager = new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false);
+        LinearLayoutManager reviewsLayoutManager = new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false);
         detailBinding.rvTrailers.setLayoutManager(trailersLayoutManager);
         detailBinding.rvReview.setLayoutManager(reviewsLayoutManager);
         detailBinding.rvTrailers.setHasFixedSize(true);
         detailBinding.rvReview.setHasFixedSize(true);
         detailBinding.rvTrailers.setNestedScrollingEnabled(false);
         detailBinding.rvReview.setNestedScrollingEnabled(false);
-        detailBinding.tbFavourites.setBackgroundDrawable(ContextCompat.getDrawable(getApplicationContext(), R.drawable.ic_favorite_border_black_24dp));
         final Cursor favouritesCursor = getContentResolver().query(
                 MovieEntry.CONTENT_URI,
                 null,
@@ -202,20 +183,23 @@ public class DetailActivity extends AppCompatActivity implements TrailerAdapter.
         assert favouritesCursor != null;
         if (favouritesCursor.getCount() > 0) {
             detailBinding.tbFavourites.setChecked(true);
+            detailBinding.tbFavourites.setBackground(ContextCompat.getDrawable(getApplicationContext(), R.drawable.ic_favorite_red_full));
             favouritesCursor.close();
         }
-        detailBinding.tbFavourites.setBackgroundDrawable(ContextCompat.getDrawable(getApplicationContext(), R.drawable.ic_favorite_border_black_24dp));
+        else {
+            detailBinding.tbFavourites.setChecked(false);
+            detailBinding.tbFavourites.setBackground(ContextCompat.getDrawable(getApplicationContext(), R.drawable.ic_favorites_red_border));
+        }
+
         detailBinding.tbFavourites.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton compoundButton, boolean isChecked) {
-
                 if (isChecked) {
-                    detailBinding.tbFavourites.setBackgroundDrawable(ContextCompat.getDrawable(getApplicationContext(), R.drawable.ic_favorite_black_24dp));
+                    detailBinding.tbFavourites.setBackground(ContextCompat.getDrawable(getApplicationContext(), R.drawable.ic_favorite_red_full));
                     insertMovieToFavourites();
-
                 }
                 else {
-                    detailBinding.tbFavourites.setBackgroundDrawable(ContextCompat.getDrawable(getApplicationContext(), R.drawable.ic_favorite_border_black_24dp));
+                    detailBinding.tbFavourites.setBackground(ContextCompat.getDrawable(getApplicationContext(), R.drawable.ic_favorites_red_border));
                     deleteMovieFromFavourites();
                 }
             }
@@ -256,9 +240,9 @@ public class DetailActivity extends AppCompatActivity implements TrailerAdapter.
 
 
         populateUI();
-        Picasso.with(this).load(selectedMovie.getPosterUrl()).placeholder(R.drawable.ic_launcher_background).into(detailBinding.ivPoster);
+        Picasso.with(this).load(selectedMovie.getPosterUrl()).error(R.drawable.poster_error).into(detailBinding.ivPoster);
         setTitle(selectedMovie.getTitle());
-        Picasso.with(this).load(selectedMovie.getBackdropUrl()).into(detailBinding.ivBackground);
+        Picasso.with(this).load(selectedMovie.getBackdropUrl()).error(R.drawable.backdrop_error).into(detailBinding.ivBackground);
 
 
     }
@@ -358,8 +342,5 @@ public class DetailActivity extends AppCompatActivity implements TrailerAdapter.
             startActivity(webIntent);
         }
     }
-
-
 }
-
 

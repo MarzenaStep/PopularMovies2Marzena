@@ -16,8 +16,10 @@
     <string name="menu_favourites">Favourites</string>
 
     <!--Main Activity error messages-->
-    <string name="no_internet_connection">No internet connection</string>
+    <string name="no_internet_connection">Please, connect to the Internet</string>
     <string name="no_movies">No movies found</string>
+    <string name="no_favourites">You haven\'t added any movie to favourites yet!</string>
+
 
     <!-- Details Activity-->
     <string name="details_error_message">Movie data not available</string>
